@@ -12,12 +12,12 @@ function(input, output, session) {
   
   time = as.POSIXct(data$timestamp/1000, origin="1970-01-01",tz="America/Los_Angeles")
   output$update = renderText({
-    paste0("Update Timestamp: \n",as.character(time))
+    paste0("Update Timestamp: ",as.character(time))
   })
   
   pal <- colorNumeric(
     palette = c("Red","Yellow","Green"),
-    domain = c(0,max(c(stations$ba,stations$da)))
+    domain = c(0,1)
   )
   
   htmlGen = function(shape){
@@ -32,34 +32,22 @@ function(input, output, session) {
       setView(-122.3359058, 47.614848, zoom = 13) %>%
       addProviderTiles("CartoDB.DarkMatter",
                        options = providerTileOptions(noWrap = TRUE)
-      ) %>% addLegend(position = "bottomright", pal =pal, values = c(0,max(stations$ba)),title ="Availability")
+      ) %>% addLegend(position = "bottomright", pal =pal, values = c(0,1),title ="% of Bikes Available",labFormat = labelFormat(
+        suffix = '%', between = ', ',
+        transform = function(x) 100 * x
+      ))
   })
   
-  proxy = leafletProxy("leaf",data = stations) %>% addCircleMarkers(layerId =~id, fillColor = ~pal(ba),stroke=FALSE,fillOpacity = 0.5, popup = htmlGen(stations))
+  proxy = leafletProxy("leaf",data = stations) %>% addCircleMarkers(layerId =~id, fillColor = ~pal(ba/(ba+da)),stroke=FALSE,fillOpacity = 0.5, popup = htmlGen(stations))
   
   observeEvent(input$refresh,{
     data <- content(GET(url), as="parsed")
     time = as.POSIXct(data$timestamp/1000, origin="1970-01-01",tz="America/Los_Angeles")
     output$update = renderText({
-      paste0("Update Timestamp: \n",as.character(time))
+      paste0("Update Timestamp: ",as.character(time))
     })
     stations = list2shape(data$stations)
-    proxy = leafletProxy("leaf",data = stations) %>% addCircleMarkers(layerId =~id,fillColor = ~pal(ba),stroke=FALSE,fillOpacity = 0.5, popup = htmlGen(stations))
-  })
-  
-  observeEvent(input$type,{
-    data <- content(GET(url), as="parsed")
-    time = as.POSIXct(data$timestamp/1000, origin="1970-01-01",tz="America/Los_Angeles")
-    output$update = renderText({
-      paste0("Update Timestamp: \n",as.character(time))
-    })
-    stations = list2shape(data$stations)
-    if(input$type=="ba"){
-      proxy = leafletProxy("leaf",data = stations) %>% addCircleMarkers(layerId =~id,fillColor = ~pal(ba),stroke=FALSE,fillOpacity = 0.5, popup = htmlGen(stations))
-    }else if(input$type=="da"){
-      proxy = leafletProxy("leaf",data = stations) %>% addCircleMarkers(layerId =~id,fillColor = ~pal(da),stroke=FALSE,fillOpacity = 0.5, popup = htmlGen(stations))
-    }
-    
+    proxy = leafletProxy("leaf",data = stations) %>% addCircleMarkers(layerId =~id,fillColor = ~pal(ba/(ba+da)),stroke=FALSE,fillOpacity = 0.5, popup = htmlGen(stations))
   })
   
   
